@@ -133,7 +133,7 @@ export function PartsResultsTable({ items, notConnected }: PartsResultsTableProp
               </div>
 
               <p className="text-xs text-slate-400 mt-2">
-                via {item.sourceProvider} · {new Date(item.lastCheckedAt).toLocaleString()}
+                {new Date(item.lastCheckedAt).toLocaleString()}
               </p>
             </div>
           );
