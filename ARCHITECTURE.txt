@@ -1,5 +1,5 @@
 CompatIQ — Full Architecture Document
-Generated: 2026-05-24 (updated session 4, 2026-05-25)
+Generated: 2026-05-24 (updated session 5, 2026-05-25)
 
 ================================================================================
 STACK
@@ -56,7 +56,9 @@ compatiq/
 │   │   └── page.tsx                        ← Legacy parts listing (demo data)
 │   │
 │   ├── setup-live-data/
-│   │   └── page.tsx                        ← API key setup UI (dev only)
+│   │   ├── page.tsx                        ← Server wrapper: redirects to / in production
+│   │   │                                      (NODE_ENV === 'production' → redirect('/'))
+│   │   └── SetupLiveDataClient.tsx         ← Client component: API key setup UI (dev only)
 │   │
 │   └── api/
 │       ├── debug/
@@ -78,9 +80,12 @@ compatiq/
 │       ├── reviews/
 │       │   └── search/
 │       │       └── route.ts                ← POST — review signals (passes specs for exact matching)
-│       └── store/
-│           └── search-device/
-│               └── route.ts                ← POST — store listings for a device
+│       ├── store/
+│       │   └── search-device/
+│       │       └── route.ts                ← POST — store listings for a device
+│       └── debug/
+│           └── test-serpapi-parts/
+│               └── route.ts                ← POST — direct SerpApi test (dev only, 403 in prod)
 │
 ├── components/
 │   ├── forms/
@@ -103,7 +108,12 @@ compatiq/
 │   │                                          Data source: lib/data/brandSupportUrls.ts
 │   │
 │   ├── layout/
-│   │   ├── BetaBanner.tsx              ← Site-wide public beta notice (renders in root layout)
+│   │   ├── BetaBanner.tsx              ← Site-wide public beta notice (renders in root layout,
+│   │   │                                  above TopNav, cannot be dismissed)
+│   │   │                                  Wording: "Public beta. Results are advisory and may be
+│   │   │                                  incomplete where stores block or limit product data.
+│   │   │                                  Always confirm important details with the seller or
+│   │   │                                  manufacturer."
 │   │   ├── TopNav.tsx
 │   │   └── Footer.tsx                  ← Includes /privacy, /terms, /disclaimer nav links
 │   │
@@ -111,9 +121,17 @@ compatiq/
 │   │   ├── PartCard.tsx                    ← Single part listing card
 │   │   ├── PartsFilters.tsx                ← Filter + sort sidebar
 │   │   └── PartsResultsTable.tsx           ← Parts table with empty state
+│   │                                          Backend provider name NOT shown to users —
+│   │                                          only timestamp displayed per result
 │   │
 │   ├── providers/
 │   │   └── ProviderStatusPanel.tsx         ← Collapsible provider status list
+│   │                                          statusLabel() maps raw status → user-facing text:
+│   │                                            'not-configured' → "This source is not connected"
+│   │                                            'failed'         → "Search temporarily failed"
+│   │                                            'rate-limited'   → "Rate limit reached — try again shortly"
+│   │                                            'no-results'     → "No results from this source"
+│   │                                            'connected'      → provider message (passed through)
 │   │
 │   ├── reports/
 │   │   ├── DeviceOverviewCard.tsx          ← Device name, source badge, specs summary
@@ -384,7 +402,28 @@ compatiq/
 │           └── NvdProvider.ts              ← NVD CVE lookup (free tier, NVD_API_KEY for higher limits)
 │
 ├── docs/
-│   └── API_SETUP.md                        ← Developer guide: keys, providers, testing
+│   ├── API_SETUP.md                        ← Developer guide: keys, providers, testing
+│   ├── PUBLIC_BETA_READINESS.md            ← Pre-launch audit: what works, limitations,
+│   │                                          security/privacy checks, go/no-go decision
+│   └── PUBLIC_BETA_DEPLOYMENT.md          ← Step-by-step Vercel deployment guide
+│
+├── test-links/
+│   └── public-beta-links.json             ← 10 SA store URLs for link extraction testing
+│                                             (Wootware, Computermania, Matrix Warehouse,
+│                                              Evetech, Incredible Connection, Amazon SA,
+│                                              Takealot, Samsung, Bash, Cellucity)
+│
+├── scripts/
+│   └── test-public-beta-links.ts          ← TypeScript test runner (tsx):
+│                                             POSTs each URL to /api/product/analyse-link
+│                                             Classifies: PASS / PARTIAL / FAIL
+│                                             PASS = device + CPU/chipset + RAM or storage
+│                                             Writes reports/public-beta-link-test-report.json
+│                                             Writes reports/public-beta-link-test-report.md
+│                                             Run: npm run test:public-beta-links
+│
+├── reports/                               ← Generated — gitignored
+│   └── public-beta-link-test-report.md   ← Last run: 4 PASS / 6 PARTIAL / 0 FAIL
 │
 ├── .env.example                            ← All env var names with comments (no real values)
 ├── .env.local                              ← Local secrets (gitignored) — SERPAPI_API_KEY set
@@ -450,7 +489,7 @@ POST /api/reviews/search
           Only exactDevice + sameModelFamily snippets used for sentiment synthesis.
           ReviewSignal includes: matchCoverage, noExactSignals
 
-GET  /api/debug/providers             ← 403 in production
+GET  /api/debug/providers             ← 403 in production (NODE_ENV check at top of handler)
   Output: { summary, byCategory, notConfiguredEnvVars[], quickStart[] }
   Lists all 28 providers with configured status and missing env vars
 
@@ -458,6 +497,10 @@ POST /api/debug/save-env-key          ← 403 in production
   Input:  { key: string }
   Output: { saved: true, message: "Key saved locally. Restart the app." }
   Writes SERPAPI_API_KEY to .env.local — never logs or returns the key value
+
+POST /api/debug/test-serpapi-parts    ← 403 in production
+  Input:  { query: string, country?: string }
+  Direct SerpApi Shopping + organic fallback test — dev diagnostic only
 
 ================================================================================
 PROVIDER ARCHITECTURE
@@ -865,13 +908,18 @@ UX flow:
 SETUP SYSTEM (DEV ONLY)
 ================================================================================
 
-/setup-live-data  ← app/setup-live-data/page.tsx
-  - Shows SerpApi configured: Yes / No
-  - Input field (type=password) for pasting key
-  - "Save key locally" → POST /api/debug/save-env-key
-  - Clears input from state immediately after save — key never held in React state
-  - Shows "Restart the dev server" instruction after save
-  - "Refresh status" button → re-fetches /api/debug/providers
+/setup-live-data  ← app/setup-live-data/page.tsx (server) + SetupLiveDataClient.tsx (client)
+  Server wrapper (page.tsx):
+    if (process.env.NODE_ENV === 'production') redirect('/')   ← hard block in production
+    Otherwise renders <SetupLiveDataClient />
+
+  Client component (SetupLiveDataClient.tsx):
+    - Shows SerpApi configured: Yes / No
+    - Input field (type=password) for pasting key
+    - "Save key locally" → POST /api/debug/save-env-key
+    - Clears input from state immediately after save — key never held in React state
+    - Shows "Restart the dev server" instruction after save
+    - "Refresh status" button → re-fetches /api/debug/providers
 
 POST /api/debug/save-env-key
   - 403 in production
@@ -1005,8 +1053,9 @@ API:
   POST /api/parts/search
   POST /api/store/search-device
   POST /api/reviews/search
-  GET  /api/debug/providers         (dev only)
-  POST /api/debug/save-env-key      (dev only)
+  GET  /api/debug/providers             (dev only — 403 in production)
+  POST /api/debug/save-env-key          (dev only — 403 in production)
+  POST /api/debug/test-serpapi-parts    (dev only — 403 in production)
 
 ================================================================================
 COLOUR SYSTEM
@@ -1048,6 +1097,7 @@ CONFIGURATION FILES
 
 .env.example
   All 29 env var names with comments — no real values committed
+  Tracked in git (gitignore fixed: .env* → .env.local + .env*.local)
   Grouped: eBay, SerpApi, Best Buy, UPC/Barcode, Amazon, Manufacturer Serial,
            SA Retailers, NVD, Database/Cache
 
@@ -1055,9 +1105,23 @@ CONFIGURATION FILES
   SERPAPI_API_KEY=<set>     ← SerpApi key active
   All other keys empty
 
+.gitignore
+  Tracks .env.example — changed from .env* to:
+    .env.local
+    .env*.local
+
 docs/API_SETUP.md
   Full developer guide: provider groups, eBay OAuth steps,
   minimum working setup, debug endpoint usage, security rules
+
+docs/PUBLIC_BETA_READINESS.md
+  Pre-launch readiness audit. Sections: status, what works, limitations,
+  known unreliable stores, provider status, privacy/security, known issues,
+  go/no-go decision.
+
+docs/PUBLIC_BETA_DEPLOYMENT.md
+  Step-by-step Vercel deployment guide. Covers: git init → GitHub → Vercel
+  import → env vars → deploy → test routes → custom domain.
 
 ================================================================================
 RETAILER FETCH BEHAVIOUR (KNOWN)
@@ -1084,13 +1148,55 @@ Takealot            200 + empty SPA  isEmptySpa() detects, slug fallback used
 Vodacom             200 + empty SPA  ID-only slug → fail, manual entry required
 
 ================================================================================
+PUBLIC BETA STATUS (as of session 5, 2026-05-25)
+================================================================================
+
+Build:      ✓ Passed — 27 pages, TypeScript clean, Turbopack ~30s
+Lint:       ✓ 0 errors (28 warnings — intentional stub/provider patterns)
+Audit:      2 moderate (postcss in next@16.2.6 internals — not fixable, not a blocker)
+Link test:  4 PASS / 6 PARTIAL / 0 FAIL (10 SA stores tested)
+            PASS:    Matrix Warehouse, Incredible Connection, Takealot, Bash
+            PARTIAL: Wootware, Computermania, Amazon SA, Samsung, Evetech, Cellucity
+
+Security:
+  Rate limiting on all 5 API routes
+    analyse-link:    10 req/min per IP
+    serial-lookup:   10 req/min per IP
+    parts/store/reviews: 20 req/min per IP each
+  Serial numbers masked in all logs (maskSerial → "SN/****xxxx")
+  Serial never in URL params — POST body only
+  /setup-live-data blocked in production (server-side redirect)
+  /api/debug/* return 403 in production — confirmed in all three handlers
+  .env.local gitignored, not committed
+
+Privacy:
+  No PII in URL params
+  sessionStorage only (cleared on tab close)
+  Backend provider names not shown to users (removed from PartsResultsTable)
+  Provider status panel shows user-friendly labels, not internal names
+
+Marketing wording (enforced in code):
+  Homepage H1:     "Paste the link before you buy."
+  Beta banner:     "Results are advisory and may be incomplete where stores
+                    block or limit product data."
+  Trust note:      "Does not guarantee compatibility or availability."
+
+Git:
+  Repo: https://github.com/kjrletebele-wq/compatiq
+  Branch: master
+  Commits: 3 (Public beta, Track env example, Hide backend provider name)
+
+Deployment: Vercel (pending — see docs/PUBLIC_BETA_DEPLOYMENT.md)
+  Required env var: SERPAPI_API_KEY
+
+================================================================================
 SUMMARY COUNTS
 ================================================================================
 
 Item                                 Count
 ---------------------------------------------------------------------------
 App routes (pages)                   15 (11 live + 4 legacy redirects)
-API routes                           9  (6 production + 3 dev-only)
+API routes                           9  (6 production + 3 dev-only, all returning 403 in prod)
 React components                     ~32
 TypeScript type files                8
 Provider interfaces                  3
