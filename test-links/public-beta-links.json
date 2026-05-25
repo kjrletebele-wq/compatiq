@@ -1,0 +1,72 @@
+[
+  {
+    "store": "Wootware",
+    "url": "https://www.wootware.co.za/acer-aspire-5-a515-58m-52qe-noos-ci5-1335u-8gb-ddr5-512gb-ssd-15.6-fhd-ips.html",
+    "expectedCategory": "Laptop",
+    "expectedBrand": "Acer",
+    "notes": "Full HTML extraction expected — laptop with spec table"
+  },
+  {
+    "store": "Computermania",
+    "url": "https://www.computermania.co.za/laptops/lenovo-ideapad-slim-3-15iru8-core-i5-1335u-16gb-512gb-ssd-15-6-fhd-windows-11-home",
+    "expectedCategory": "Laptop",
+    "expectedBrand": "Lenovo",
+    "notes": "Full HTML extraction expected"
+  },
+  {
+    "store": "Matrix Warehouse",
+    "url": "https://www.matrixwarehouse.co.za/product/hp-250-g9-laptop-intel-core-i5-1235u-8gb-ddr4-256gb-ssd-15-6-fhd-windows-11-home",
+    "expectedCategory": "Laptop",
+    "expectedBrand": "HP",
+    "notes": "Full HTML extraction expected"
+  },
+  {
+    "store": "Evetech",
+    "url": "https://www.evetech.co.za/PC-Components/ryzen-5-7600x-desktop-processor-buy-online/AMD-Ryzen-5-7600X-Desktop-Processor/pg/1985",
+    "expectedCategory": "PC",
+    "expectedBrand": "AMD",
+    "notes": "Component listing — may be PARTIAL, not a full laptop"
+  },
+  {
+    "store": "Incredible Connection",
+    "url": "https://www.incredible.co.za/laptops/hp-laptop-15s-fq5010ntu-intel-core-i5-1235u-15-6-fhd-8gb-256gb-ssd-windows-11-home",
+    "expectedCategory": "Laptop",
+    "expectedBrand": "HP",
+    "notes": "403 blocked — slug fallback expected (PARTIAL)"
+  },
+  {
+    "store": "Amazon SA",
+    "url": "https://www.amazon.co.za/Lenovo-IdeaPad-82LM00CGSA-i5-1135G7-Integrated/dp/B09G8PDVG2",
+    "expectedCategory": "Laptop",
+    "expectedBrand": "Lenovo",
+    "notes": "503 blocked — slug fallback expected (PARTIAL)"
+  },
+  {
+    "store": "Takealot",
+    "url": "https://www.takealot.com/asus-vivobook-15-a1504ga-nj743w-intel-core-i3-n305-15-6-fhd-ips-8gb-512gb-ssd-win-11/PLID96097695",
+    "expectedCategory": "Laptop",
+    "expectedBrand": "ASUS",
+    "notes": "Empty SPA — slug fallback expected (PARTIAL)"
+  },
+  {
+    "store": "Samsung",
+    "url": "https://www.samsung.com/za/smartphones/galaxy-s24/galaxy-s24-5g-256gb-cobalt-violet-sm-s921bzvgeue/",
+    "expectedCategory": "Smartphone",
+    "expectedBrand": "Samsung",
+    "notes": "Full HTML + JSON-LD expected (PASS)"
+  },
+  {
+    "store": "Bash",
+    "url": "https://www.bash.com/hp-255-g9-15-6-amd-ryzen-5-5625u-8gb-ram-256gb-ssd-windows-11-home/3005649",
+    "expectedCategory": "Laptop",
+    "expectedBrand": "HP",
+    "notes": "Partial extraction expected"
+  },
+  {
+    "store": "Cellucity",
+    "url": "https://www.cellucity.co.za/samsung-galaxy-a55-5g-256gb-dual-sim-awesome-navy-sm-a556e-128gb-ds-awna",
+    "expectedCategory": "Smartphone",
+    "expectedBrand": "Samsung",
+    "notes": "Partial extraction expected"
+  }
+]

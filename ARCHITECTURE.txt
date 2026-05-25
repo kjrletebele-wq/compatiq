@@ -1,0 +1,1119 @@
+CompatIQ — Full Architecture Document
+Generated: 2026-05-24 (updated session 4, 2026-05-25)
+
+================================================================================
+STACK
+================================================================================
+
+Layer              Technology                  Version
+---------------------------------------------------------------------------
+Framework          Next.js App Router          16.2.6
+UI Library         React                       19.2.4
+Language           TypeScript (strict)         5.x
+Styling            Tailwind CSS                4.x
+Icons              lucide-react                1.16.0
+Class utilities    clsx + tailwind-merge       2.1.1 / 3.6.0
+Package manager    npm                         —
+Build tool         Turbopack (Next.js built-in) —
+
+================================================================================
+FULL FOLDER TREE
+================================================================================
+
+compatiq/
+│
+├── app/                                    ← Next.js App Router — all routes
+│   ├── globals.css
+│   ├── layout.tsx                          ← Root layout: TopNav + Footer
+│   ├── page.tsx                            ← Homepage
+│   │
+│   ├── advisory-report/
+│   │   └── page.tsx                        ← Legacy advisory report (URL params)
+│   │
+│   ├── buy-device/
+│   │   ├── page.tsx                        ← "I'm looking for a device" entry
+│   │   └── report/
+│   │       └── page.tsx                    ← Full advisory + upgradeability report
+│   │
+│   ├── have-device/
+│   │   ├── page.tsx                        ← "I have a device" entry (serial / link / manual)
+│   │   └── result/
+│   │       └── page.tsx                    ← Device result + purpose fit + parts
+│   │
+│   ├── how-it-works/
+│   │   └── page.tsx
+│   │
+│   ├── i-have-device/
+│   │   └── page.tsx                        ← Legacy entry page
+│   │
+│   ├── looking-for-device/
+│   │   └── page.tsx                        ← Legacy entry page
+│   │
+│   ├── parts/
+│   │   └── page.tsx                        ← Live parts search (calls /api/parts/search)
+│   │
+│   ├── parts-results/
+│   │   └── page.tsx                        ← Legacy parts listing (demo data)
+│   │
+│   ├── setup-live-data/
+│   │   └── page.tsx                        ← API key setup UI (dev only)
+│   │
+│   └── api/
+│       ├── debug/
+│       │   ├── providers/
+│       │   │   └── route.ts                ← GET — all provider statuses (dev only)
+│       │   └── save-env-key/
+│       │       └── route.ts                ← POST — write SERPAPI_API_KEY to .env.local (dev only)
+│       ├── device/
+│       │   ├── advisory/
+│       │   │   └── route.ts                ← POST — purpose-fit advisory (passes category to engine)
+│       │   └── serial-lookup/
+│       │       └── route.ts                ← POST — serial number → device identity
+│       ├── parts/
+│       │   └── search/
+│       │       └── route.ts                ← POST — parts search across all providers
+│       ├── product/
+│       │   └── analyse-link/
+│       │       └── route.ts                ← POST — extract device from product URL
+│       ├── reviews/
+│       │   └── search/
+│       │       └── route.ts                ← POST — review signals (passes specs for exact matching)
+│       └── store/
+│           └── search-device/
+│               └── route.ts                ← POST — store listings for a device
+│
+├── components/
+│   ├── forms/
+│   │   ├── BuyDeviceLinkForm.tsx           ← URL paste form with sparse-result detection:
+│   │   │                                      • normal flow: success → advance to purpose
+│   │   │                                      • sparse flow (no CPU/RAM): shows partial result
+│   │   │                                        card + spec paste textarea + merge on continue
+│   │   │                                      • store hint strip: "Works best on" chip row
+│   │   │                                        listing 6 reliable stores (Takealot, Incredible
+│   │   │                                        Connection, Wootware, Computermania, Matrix
+│   │   │                                        Warehouse, Amazon) in emerald-50 chips
+│   │   ├── IHaveDeviceForm.tsx             ← Serial / dropdown tabs (legacy)
+│   │   ├── LookingForDeviceForm.tsx        ← Category → Brand → Model → UseCase
+│   │   ├── ManualDeviceForm.tsx            ← Manual spec entry form
+│   │   ├── PurposeSelector.tsx             ← Use-case pill selector
+│   │   └── SerialLookupForm.tsx            ← Serial number input + lookup + brand fallback:
+│   │                                          error state shows chip grid of all 23 brands;
+│   │                                          matched brand highlighted emerald with ExternalLink;
+│   │                                          contextual hint text (e.g. "enter your Service Tag")
+│   │                                          Data source: lib/data/brandSupportUrls.ts
+│   │
+│   ├── layout/
+│   │   ├── BetaBanner.tsx              ← Site-wide public beta notice (renders in root layout)
+│   │   ├── TopNav.tsx
+│   │   └── Footer.tsx                  ← Includes /privacy, /terms, /disclaimer nav links
+│   │
+│   ├── parts/
+│   │   ├── PartCard.tsx                    ← Single part listing card
+│   │   ├── PartsFilters.tsx                ← Filter + sort sidebar
+│   │   └── PartsResultsTable.tsx           ← Parts table with empty state
+│   │
+│   ├── providers/
+│   │   └── ProviderStatusPanel.tsx         ← Collapsible provider status list
+│   │
+│   ├── reports/
+│   │   ├── DeviceOverviewCard.tsx          ← Device name, source badge, specs summary
+│   │   ├── FutureOwnershipSection.tsx      ← 6 risk cards (RAM / battery / repair etc.)
+│   │   ├── PurposeFitReport.tsx            ← Full purpose-fit advisory block
+│   │   ├── RecommendationBadge.tsx         ← Final verdict badge + block
+│   │   ├── ReviewSignalsBlock.tsx          ← Live review signals — plain-English UI copy:
+│   │   │                                      amber banner when noExactSignals=true
+│   │   │                                      sky info bar when matchCoverage='mixed'
+│   │   │                                      confidence labels: "Lots of data" / "Some data" /
+│   │   │                                        "Limited data" / "Sample data"
+│   │   │                                      coverage badges: "Exact match" / "Similar models"
+│   │   │                                        / "Mixed"
+│   │   │                                      sections: "What people love" / "What people dislike"
+│   │   │                                      footer: "Pulled from web reviews"
+│   │   ├── ReviewSignalsSection.tsx        ← Legacy review signals (demo)
+│   │   ├── SpecsTable.tsx                  ← Legacy specs table
+│   │   ├── TechnicalSpecsTable.tsx         ← Live specs table (laptop + smartphone layouts):
+│   │   │                                      laptop: CPU, GPU, RAM, RAM type, RAM speed,
+│   │   │                                        storage, storage type, display, brightness,
+│   │   │                                        camera, battery, OS, ports, connectivity,
+│   │   │                                        weight, warranty
+│   │   │                                      smartphone: chipset, RAM, storage, display,
+│   │   │                                        battery, charging, camera, connectivity, OS,
+│   │   │                                        weight, warranty
+│   │   └── UpgradeabilityGrid.tsx          ← Component upgrade cards + Find Parts buttons
+│   │
+│   ├── store/
+│   │   └── StoreComparisonTable.tsx        ← Store listings with match tiers:
+│   │                                          "Same device" (exact/likely), collapsible
+│   │                                          "Similar alternatives" (similar), hidden
+│   │                                          (unknown). Shows matchReasons (green) and
+│   │                                          matchConflicts (amber + AlertTriangle)
+│   │
+│   └── ui/
+│       ├── Badge.tsx
+│       ├── Button.tsx
+│       ├── Card.tsx
+│       ├── EmptyLiveSourceState.tsx        ← Shared empty state with message + subtitle
+│       └── SelectField.tsx
+│
+├── lib/
+│   ├── utils.ts                            ← cn(), formatPrice(), generateId(), etc.
+│   │
+│   ├── security/
+│   │   ├── hashSerial.ts                   ← SHA-256 hash for serial numbers
+│   │   ├── maskSerial.ts                   ← maskSerial() → "SN/****xxxx"
+│   │   ├── rateLimiter.ts                  ← In-memory sliding-window rate limiter:
+│   │   │                                      checkRateLimit(ip, route, max, windowMs)
+│   │   │                                      getCallerIp(req) — x-forwarded-for / x-real-ip
+│   │   │                                      Auto-prune every 5 min to prevent memory growth
+│   │   │                                      Applied to: analyse-link (10/min),
+│   │   │                                        serial-lookup (10/min),
+│   │   │                                        parts-search / store-search / reviews-search
+│   │   │                                        (20/min each). Returns 429 + Retry-After header.
+│   │   └── redactSensitive.ts              ← redacts serial / key values from log output
+│   │
+│   ├── types/
+│   │   ├── advisory.ts                     ← AdvisoryRequest, AdvisoryResult, PurposeFitResult,
+│   │   │                                      SuitabilityRating, SUITABILITY_LABELS
+│   │   ├── device.ts                       ← DeviceCategory, DeviceIdentity, DeviceSpecs,
+│   │   │                                      Purpose, PURPOSE_LABELS
+│   │   │                                      DeviceSpecs fields include: ramSpeed, brightness
+│   │   ├── parts.ts                        ← PartListing, PartsSearchInput (+ specs), PartsSearchResult
+│   │   ├── product.ts                      ← ProductData, ProductLinkInput/Result, StoreListing
+│   │   │                                      StoreListing includes: matchConflicts?: string[]
+│   │   ├── providers.ts                    ← ProviderStatus, status helper factories
+│   │   ├── reviews.ts                      ← ReviewSignal (matchCoverage, noExactSignals),
+│   │   │                                      ReviewSearchInput (includes specs)
+│   │   ├── store.ts                        ← DeviceStoreSearchInput, StoreSearchResult
+│   │   ├── upgradeability.ts               ← ComponentType (26 types), UpgradeabilityResult, COMPONENT_LABELS
+│   │   └── warranty.ts                     ← WarrantyInfo
+│   │
+│   ├── logic/
+│   │   ├── advisoryEngine.ts               ← generateAdvisoryReport() — legacy demo path
+│   │   ├── compatibilityEngine.ts          ← getPartsForDevice() — legacy demo path
+│   │   ├── conflictDetectionEngine.ts      ← detectConflicts(specs, rawText) → string[]
+│   │   ├── deviceLookup.ts                 ← lookupDevice(c, b, m) → Device from DEVICE_DB
+│   │   ├── dropdownResolver.ts             ← BRANDS_BY_CATEGORY, model lists, resolver fns
+│   │   ├── missingInformationEngine.ts     ← getMissingFields(specs) → string[]
+│   │   ├── partsSearchQueryBuilder.ts      ← buildPartsQuerySet(), formatDeviceLabel(),
+│   │   │                                      getComponentCompatibilityWarnings()
+│   │   ├── purposeFitEngine.ts             ← evaluatePurposeFit(specs, purpose, category?)
+│   │   │                                      Signature: (DeviceSpecs|null, Purpose, DeviceCategory?)
+│   │   │                                      Routes to evaluateSmartphone() when category=Smartphone
+│   │   │                                        or chip is A-series/Snapdragon/MediaTek/Exynos
+│   │   │                                      PC/Laptop path: RAM tier + CPU tier + storage tier
+│   │   │                                        + discrete GPU + display tier → SuitabilityRating
+│   │   │                                      Smartphone path: getPhoneChipTier() → PhoneChipTier
+│   │   │                                        (flagship/high/mid/entry/unknown) →
+│   │   │                                        evaluateSmartphone(specs, purpose) covers all 14 purposes
+│   │   │                                      Supported SuitabilityRatings:
+│   │   │                                        StrongFit | GoodFit | UsableWithLimits |
+│   │   │                                        NotIdeal | NotEnoughInformation
+│   │   ├── resultMergeEngine.ts            ← mergePartListings(), rankPartListings(),
+│   │   │                                      mergeStoreListings(), rankStoreListings(),
+│   │   │                                      mergeProviderStatuses()
+│   │   ├── reviewMatchEngine.ts            ← classifyReviewResult(text, device, specs)
+│   │   │                                        → 'exactDevice' | 'sameModelFamily' |
+│   │   │                                           'differentVariant' | 'unrelated'
+│   │   │                                      buildReviewDeviceQuery(device, specs)
+│   │   │                                        → "HP 15s 7520U" or "Apple iPhone 14"
+│   │   │                                      Exact match signals:
+│   │   │                                        PC/laptop: brand + series + CPU model/family
+│   │   │                                        Phone: brand + series + storage GB (when no CPU number)
+│   │   │                                      Conflict detection: AMD/Intel, Ryzen tier,
+│   │   │                                        RAM GB, storage GB
+│   │   ├── serialSearch.ts                 ← Demo serial lookup (prefix matching)
+│   │   ├── upgradeabilityEngine.ts         ← assessUpgradeability(device, specs) → UpgradeabilityResult[]
+│   │   └── useCaseAdvisor.ts               ← 12 use-case advisories (rule-based, legacy)
+│   │
+│   ├── normalisers/
+│   │   ├── normaliseProduct.ts             ← parseDeviceFromTitle(), storeNameFromUrl(), KNOWN_BRANDS
+│   │   │                                      Category detection includes: redmi, poco, dual-sim,
+│   │   │                                        5000 mah as Smartphone signals
+│   │   │                                      storeNameFromUrl covers: Amazon SA, Takealot,
+│   │   │                                        Incredible Connection, Wootware, Evetech,
+│   │   │                                        OneDayOnly, Bash, Samsung, HiFi Corp, GeeWiz,
+│   │   │                                        iStore, Vodacom, Cellucity, Game, Makro, Hi,
+│   │   │                                        MTN, Telkom, Checkers + others
+│   │   └── normaliseSpecs.ts               ← normaliseSpecsFromSpecRows(), normaliseSpecsFromTitle(),
+│   │                                          normaliseSpecsFromText(), inferGPUFromCPU(), mergeSpecs()
+│   │                                          CPU patterns cover:
+│   │                                            AMD Ryzen (with/without "AMD" prefix)
+│   │                                            Intel Core / Core Ultra (with/without "Intel" prefix)
+│   │                                            Intel N100/N200 series
+│   │                                            Apple M-series, A-series Bionic
+│   │                                            Qualcomm Snapdragon (all generations)
+│   │                                            MediaTek Dimensity, Helio, G-series (bare too)
+│   │                                            Samsung Exynos (bare too)
+│   │                                            Intel Celeron/Pentium
+│   │                                          GPU inference (inferGPUFromCPU):
+│   │                                            Ryzen 5xxx-8xxx → AMD Radeon Graphics
+│   │                                            Core 11th gen+ → Intel Iris Xe
+│   │                                            Core Ultra → Intel Arc Graphics
+│   │                                            Apple M-series → Apple Silicon GPU
+│   │                                            A-series Bionic → Apple GPU
+│   │                                            Snapdragon → Qualcomm Adreno GPU
+│   │                                            MediaTek/Helio/Dimensity → ARM Mali/Immortalis GPU
+│   │                                            Exynos → ARM Mali GPU
+│   │                                          RAM fallback: bare "16GB" without qualifier
+│   │                                            extracted for known laptop/phone RAM sizes
+│   │                                          OS: bare "Windows" captured when version absent
+│   │
+
+│   │
+│   ├── data/
+│   │   ├── brandSupportUrls.ts             ← Brand → official support URL map used when serial
+│   │   │                                      lookup fails. getBrandSupport(brand) fuzzy match;
+│   │   │                                      ALL_BRAND_SUPPORT deduped chip list (23 brands).
+│   │   │                                      Covers PC/laptop + smartphone brands.
+│   │   ├── deviceDatabase.ts               ← 48 real device specs (DEVICE_DB)
+│   │   ├── freshness/freshness.ts
+│   │   ├── mock/
+│   │   │   ├── mockDevices.ts
+│   │   │   ├── mockParts.ts                ← Stubbed empty (MOCK_PARTS = [])
+│   │   │   ├── mockReviews.ts
+│   │   │   └── mockStores.ts
+│   │   ├── normalisers/normaliseDevice.ts  ← Stubbed (export {})
+│   │   └── providers/productLinkProvider.ts ← Stubbed (export {})
+│   │
+│   └── providers/
+│       │
+│       ├── core/
+│       │   └── ProviderRegistry.ts         ← Central registry: searchPartsAllProviders(),
+│       │                                      searchDeviceAllProviders(), searchReviewsAllProviders(),
+│       │                                      getAllProviderStatuses()
+│       │
+│       ├── ebay/
+│       │   ├── EbayAuth.ts                 ← OAuth 2.0 client credentials, token cache, ebayIsConfigured()
+│       │   └── EbayBrowseProvider.ts       ← ebaySearch() → EbayItemSummary[]
+│       │
+│       ├── search/
+│       │   └── SerpApiClient.ts            ← serpApiShoppingSearch(), serpApiSearch(), countryToGl()
+│       │
+│       ├── parts/
+│       │   ├── PartsProvider.ts            ← interface PartsProvider { isConfigured(), searchParts() }
+│       │   ├── PartsProviderRegistry.ts    ← Local registry (superseded by core/ProviderRegistry)
+│       │   ├── EbayPartsProvider.ts        ← eBay Browse → PartListing[], uses buildPartsQuerySet()
+│       │   └── SerpApiPartsProvider.ts     ← Google Shopping → organic fallback → PartListing[]
+│       │
+│       ├── store/
+│       │   ├── StoreSearchProvider.ts      ← interface StoreSearchProvider
+│       │   ├── StoreProviderRegistry.ts    ← Local registry
+│       │   ├── EbayStoreProvider.ts        ← eBay Browse → StoreListing[]
+│       │   ├── SerpApiStoreProvider.ts     ← Google Shopping → StoreListing[]
+│       │   │                                  Dual-mode query: primary (full specs) +
+│       │   │                                    fallback (brand+model+CPU number only)
+│       │   │                                  scoreDeviceMatch() returns { score, reasons, conflicts }
+│       │   │                                  Dynamic thresholds:
+│       │   │                                    maxPossible = 45 + (cpu?40:0) + (ram?15:0) + (storage?15:0)
+│       │   │                                    exactThreshold  = maxPossible>=85 ? 85 : round(maxPossible*0.85)
+│       │   │                                    likelyThreshold = maxPossible>=65 ? 65 : round(maxPossible*0.70)
+│       │   │                                  Variant conflict detection (extractVariantSuffix):
+│       │   │                                    "iPhone 14 Pro" vs target "iPhone 14" → -30 + conflict
+│       │   │                                    only triggers when suffix follows a digit (avoids
+│       │   │                                    "ProBook", "ThinkPad", "Core Ultra" false positives)
+│       │   │                                  isIrrelevantListing(): hard filter for accessories,
+│       │   │                                    chargers, screen replacements, review articles,
+│       │   │                                    YouTube, Reddit, forums
+│       │   │                                  BRAND_ALIASES: iphone→apple, galaxy→samsung, pixel→google
+│       │   ├── BestBuyProvider.ts          ← Stub — BESTBUY_API_KEY
+│       │   └── RetailerStubs.ts            ← 8 SA retailer stubs
+│       │
+│       ├── reviews/
+│       │   ├── ReviewProvider.ts           ← interface ReviewProvider
+│       │   ├── ReviewProviderRegistry.ts   ← Local registry
+│       │   └── SerpApiReviewProvider.ts    ← Google organic snippets → ReviewSignal
+│       │                                      Uses buildReviewDeviceQuery() for exact-model queries
+│       │                                      Classifies each snippet via classifyReviewResult()
+│       │                                      Only exactDevice + sameModelFamily used for synthesis
+│       │                                      noExactSignals=true → sentiment forced to 'neutral'
+│       │                                      matchCoverage: 'exact' | 'family' | 'mixed'
+│       │                                      reviewSummary: sentimentNote pattern (plain English)
+│       │                                        sentimentNote: positive/negative/mixed/neutral prose
+│       │                                        coverageNote: noExactSignals or mixed coverage prose
+│       │                                        no-results case: plain fallback message
+│       │
+│       ├── product/
+│       │   ├── ProductLinkProvider.ts      ← interface ProductLinkProvider
+│       │   ├── ProviderRegistry.ts         ← Product provider registry
+│       │   ├── EbayProductProvider.ts      ← eBay item details from URL
+│       │   └── GenericMetadataProvider.ts  ← 10-layer HTML extraction:
+│       │                                      Fetch: browser-like UA headers to bypass basic bot checks
+│       │                                      On HTTP 4xx/5xx: URL slug fallback (not hard fail)
+│       │                                      On empty SPA (Takealot, Next.js bundles): slug fallback
+│       │                                      slugToTitle(): converts URL slug to human-readable title
+│       │                                        handles: space-separated GB/TB, "win11pro"→"Windows 11 Pro",
+│       │                                        "ddr-4"→"DDR4", all mobile brands, iPhone/Galaxy/Pixel/Redmi
+│       │                                      isProductTitle(): rejects CAPTCHA/bot-check pages,
+│       │                                        "Are you a human?", CloudFlare challenges
+│       │                                      buildResultFromSlug(): Amazon-specific warning when
+│       │                                        isAmazon=true and no CPU/RAM in slug
+│       │                                      Layers (page fetch):
+│       │                                        1. JSON-LD Product schema
+│       │                                        2. OpenGraph og:title/og:price
+│       │                                        3. <h1> text
+│       │                                        4. <meta title> or <title>
+│       │                                        4b. URL slug (SPA/blocked fallback)
+│       │                                        5. Price DOM patterns
+│       │                                        6. Availability text
+│       │                                        7. Spec table rows (th/td, dl/dt/dd, "Key: Value", IC pattern)
+│       │                                        8. Feature bullets (feature-bullets div)
+│       │                                        9. Raw product text fallback
+│       │
+│       ├── serial/
+│       │   ├── SerialLookupProvider.ts     ← interface SerialLookupProvider
+│       │   ├── SerialProviderRegistry.ts   ← lookupSerialNumber() — tries all providers in order
+│       │   ├── AppleSerialProvider.ts      ← Apple GSX (APPLE_GSX_CERT + APPLE_GSX_KEY)
+│       │   ├── DellSerialProvider.ts       ← Dell TechDirect (DELL_CLIENT_ID + DELL_CLIENT_SECRET)
+│       │   ├── HPSerialProvider.ts         ← HP API (HP_API_KEY)
+│       │   ├── LenovoSerialProvider.ts     ← Lenovo API (LENOVO_API_KEY)
+│       │   └── ManufacturerStubs.ts        ← Samsung, Asus, Acer, Microsoft Surface stubs
+│       │
+│       ├── barcode/
+│       │   ├── UPCItemDbProvider.ts        ← Stub — UPCITEMDB_API_KEY
+│       │   ├── BarcodeLookupProvider.ts    ← Stub — BARCODELOOKUP_API_KEY
+│       │   ├── EanSearchProvider.ts        ← Stub — EAN_SEARCH_API_KEY
+│       │   └── GoUPCProvider.ts            ← Stub — GOUPC_API_KEY
+│       │
+│       ├── amazon/
+│       │   └── AmazonProvider.ts           ← Stub — AMAZON_API_KEY + AMAZON_API_SECRET + AMAZON_PARTNER_TAG
+│       │
+│       ├── retailers/
+│       │   └── RetailerStubs.ts            ← makeRetailerStub() factory for 8 SA stores
+│       │
+│       └── security/
+│           └── NvdProvider.ts              ← NVD CVE lookup (free tier, NVD_API_KEY for higher limits)
+│
+├── docs/
+│   └── API_SETUP.md                        ← Developer guide: keys, providers, testing
+│
+├── .env.example                            ← All env var names with comments (no real values)
+├── .env.local                              ← Local secrets (gitignored) — SERPAPI_API_KEY set
+├── ARCHITECTURE.txt                        ← This file
+├── package.json
+├── package-lock.json
+├── tsconfig.json
+├── next.config.ts
+├── eslint.config.mjs
+├── CLAUDE.md                               ← References AGENTS.md
+└── AGENTS.md                               ← Instructions for Claude Code agents
+
+================================================================================
+API ROUTES
+================================================================================
+
+POST /api/device/advisory
+  Input:  { device: DeviceIdentity, specs: DeviceSpecs | null, purpose: Purpose }
+  Output: { purposeFit: PurposeFitResult, upgradeability, missingInformation, conflictWarnings[], confidence, generatedAt }
+  Logic:  evaluatePurposeFit(specs, purpose, device.category)
+          → detects smartphones via category or chip (A-series/Snapdragon/MediaTek/Exynos)
+          → routes to evaluateSmartphone() or laptop/PC logic
+          conflictDetectionEngine → detectConflicts()
+          generateUpgradeability() + getMissingInformation()
+
+POST /api/device/serial-lookup
+  Rate limit: 10 req/min per IP
+  Input:  { serialNumber: string, brand?: string }
+  Output: SerialLookupResult — { device, specs, upgradeability, warranty, providerStatuses }
+  Logic:  SerialProviderRegistry → tries Dell, HP, Lenovo, Apple, Samsung, Asus, Acer, Surface
+  Note:   Serial number masked in all logs (maskSerial → "SN/****xxxx")
+          Serial sent via POST body only — never in URL params
+
+POST /api/product/analyse-link
+  Rate limit: 10 req/min per IP (most expensive — fetches external URLs)
+  Input:  { url: string, country?: string, city?: string }
+  Output: ProductLinkResult { success, device, specs, storeListing, providerStatuses, warnings, sourceType }
+  Logic:  EbayProductProvider (if eBay URL) → GenericMetadataProvider (all URLs)
+          GenericMetadataProvider attempts browser-UA fetch first;
+          falls back to URL slug extraction on 4xx/5xx or empty SPA response.
+          On sparse result (no CPU + no RAM): client-side spec augmentation UI shown.
+
+POST /api/parts/search
+  Rate limit: 20 req/min per IP
+  Input:  { device: DeviceIdentity, componentType: ComponentType, specs?, country?, city? }
+  Output: PartsSearchResult — { items: PartListing[], providerStatuses[], warnings[], success }
+  Logic:  core/ProviderRegistry → searchPartsAllProviders()
+          Runs EbayPartsProvider + SerpApiPartsProvider in parallel (Promise.allSettled)
+          Results merged and ranked by resultMergeEngine
+
+POST /api/store/search-device
+  Rate limit: 20 req/min per IP
+  Input:  { device: DeviceIdentity, specs: DeviceSpecs | null, country?, city? }
+  Output: StoreSearchResult — { items: StoreListing[], providerStatuses[], warnings[], success }
+  Logic:  SerpApiStoreProvider — dual-mode query, dynamic score thresholds,
+          variant conflict detection, accessory/review-content hard filter
+
+POST /api/reviews/search
+  Rate limit: 20 req/min per IP
+  Input:  { device: DeviceIdentity, specs: DeviceSpecs | null }
+  Output: ReviewSearchResult — { signals: ReviewSignal[], providerStatuses[], success }
+  Logic:  SerpApiReviewProvider — buildReviewDeviceQuery() + classifyReviewResult()
+          Only exactDevice + sameModelFamily snippets used for sentiment synthesis.
+          ReviewSignal includes: matchCoverage, noExactSignals
+
+GET  /api/debug/providers             ← 403 in production
+  Output: { summary, byCategory, notConfiguredEnvVars[], quickStart[] }
+  Lists all 28 providers with configured status and missing env vars
+
+POST /api/debug/save-env-key          ← 403 in production
+  Input:  { key: string }
+  Output: { saved: true, message: "Key saved locally. Restart the app." }
+  Writes SERPAPI_API_KEY to .env.local — never logs or returns the key value
+
+================================================================================
+PROVIDER ARCHITECTURE
+================================================================================
+
+All providers implement one of three interfaces:
+
+  PartsProvider       { name, isConfigured(), searchParts(input) → PartsSearchResult }
+  StoreSearchProvider { name, isConfigured(), searchDevice(input) → StoreSearchResult }
+  ReviewProvider      { name, isConfigured(), searchReviews(input) → ReviewSearchResult }
+
+isConfigured() returns true only if required env vars are non-empty.
+The central registry (core/ProviderRegistry) runs all configured providers in parallel
+using Promise.allSettled — one failure does not block others.
+
+Provider status values: 'connected' | 'not-configured' | 'failed' | 'rate-limited' | 'no-results'
+
+ProviderStatus interface:
+  { providerName, connected, status, message, lastCheckedAt }
+
+Status helper factories (lib/types/providers.ts):
+  makeConnectedStatus(name, message)
+  makeNotConfiguredStatus(name)
+  makeFailedStatus(name, message)
+  makeNoResultsStatus(name)
+
+Provider count: 28 total
+  Parts:    eBay Browse API, SerpApi Shopping, Best Buy (stub), Amazon PA API (stub)
+  Store:    eBay Store Search, SerpApi Store Search, Takealot (stub),
+            Incredible Connection (stub), Evetech (stub), Wootware (stub),
+            iStore (stub), Makro (stub), Computer Mania (stub), GeeWiz (stub)
+  Reviews:  SerpApi Reviews
+  Serial:   Dell, HP, Lenovo, Apple GSX, Samsung (stub), Asus (stub),
+            Acer (stub), Microsoft Surface (stub)
+  Barcode:  UPCItemDB (stub), BarcodeLookup (stub), EAN Search (stub), GoUPC (stub)
+  Security: NVD CVE Lookup (functional — free tier, no key required)
+
+Currently configured with .env.local:
+  SERPAPI_API_KEY   → unlocks SerpApi Shopping, SerpApi Store Search, SerpApi Reviews
+  NVD               → always configured (free tier)
+
+================================================================================
+DEVICE IDENTIFICATION FLOW (LINK ENTRY)
+================================================================================
+
+User pastes product URL → POST /api/product/analyse-link
+  |
+  ├── GenericMetadataProvider.analyseLink(url)
+  │     │
+  │     ├── Fetch attempt (browser UA headers)
+  │     │     ├── Success (2xx):
+  │     │     │     isProductTitle() check → reject CAPTCHA/bot pages → use slug fallback
+  │     │     │     isSiteGenericTitle() → fallback to slug if homepage
+  │     │     │     isEmptySpa() → fallback to slug if JS-only bundle with no <h1>
+  │     │     │     Otherwise: full 9-layer extraction (see below)
+  │     │     │
+  │     │     └── Failure (4xx/5xx):
+  │     │           Amazon /ProductName/dp/ASIN → extract slug before /dp/
+  │     │           Other retailers → extract first URL path segment
+  │     │           slugToTitle() → human-readable title + spec normalisation
+  │     │           buildResultFromSlug() → success=true with confidence='low'
+  │     │             + Amazon-specific warning if no CPU/RAM found
+  │     │
+  │     └── Page extraction layers (on successful non-CAPTCHA response):
+  │           Layer 1: JSON-LD Product schema
+  │           Layer 2: OpenGraph og:title, og:price:amount, og:price:currency
+  │           Layer 3: <h1> text
+  │           Layer 4: <meta title> / <title> (site suffix stripped)
+  │           Layer 4b: URL slug fallback (when title is generic)
+  │           Layer 5: Price DOM patterns (class names, itemprop, data-price)
+  │           Layer 6: Availability text (in-stock/out-of-stock patterns)
+  │           Layer 7: Spec table rows (th/td, dl/dt/dd, "Key: Value" text, IC key-value pattern)
+  │           Layer 8: Feature bullets (feature-bullets div/ul)
+  │           Layer 9: Raw product text fallback
+  │
+  ├── normaliseSpecsFromTitle(title)   ← RAM, storage, CPU, display, OS from title
+  ├── normaliseSpecsFromText(rawText)  ← full spec extraction from body text
+  ├── normaliseSpecsFromSpecRows(rows) ← structured key/value rows → DeviceSpecs
+  ├── mergeSpecs(fromText, fromTitle, fromSpecRows) ← spec rows win over title
+  ├── inferGPUFromCPU(cpu)             ← all CPU families → GPU string
+  └── detectConflicts(title, text)     ← Intel/AMD conflict, suspicious battery
+
+BuyDeviceLinkForm sparse-result detection (client-side):
+  isSpecSparse(result) = success && !specs.cpu && !specs.ramGb
+  → sparse: show partial result card + spec paste textarea
+    "Continue" merges pasted text via normaliseSpecsFromText() + mergeSpecs()
+  → not sparse: advance to purpose step immediately
+
+Source badge logic (DeviceOverviewCard):
+  'GenericMetadataProvider' + has CPU or RAM  → "Link extracted — product page"
+  'GenericMetadataProvider' + no CPU/RAM      → "Link extracted — metadata only"
+  'manual'                                    → "Manual input"
+  high confidence provider                    → "Live provider"
+
+================================================================================
+LIKE-FOR-LIKE MATCHING SYSTEM
+================================================================================
+
+Store matching (SerpApiStoreProvider):
+
+  Query strategy:
+    Primary: brand + model + CPU family + CPU number + RAM + storage
+    Fallback: brand + model + CPU number only (runs when primary < 3 results)
+
+  Score components:
+    +25  brand match (or alias: "iphone" matches "apple")
+    +20  model/series match
+    +25  CPU model number match (e.g. "7520U")
+    +15  CPU family match (e.g. "Ryzen 5")
+    +15  RAM match
+    +10  storage match
+    +5   SSD/NVMe bonus
+    -50  wrong brand detected
+    -50  CPU architecture conflict (AMD vs Intel)
+    -40  Ryzen tier conflict (Ryzen 3 vs Ryzen 5)
+    -30  RAM mismatch
+    -25  storage mismatch
+    -30  variant suffix conflict ("Pro" / "Plus" / "Ultra" / "Max" / "Mini"
+         following a digit — avoids "ProBook", "Core Ultra" false positives)
+    -15  target has variant suffix but listing omits it
+
+  Dynamic thresholds (phone-safe):
+    maxPossible = 45 + (cpu?40:0) + (ram?15:0) + (storage?15:0)
+    exactThreshold  = maxPossible>=85 ? 85 : round(maxPossible * 0.85)
+    likelyThreshold = maxPossible>=65 ? 65 : round(maxPossible * 0.70)
+    similarThreshold = maxPossible>=35 ? 35 : round(maxPossible * 0.45)
+    score < 10 → rejected entirely
+
+Review matching (reviewMatchEngine):
+
+  classifyReviewResult(text, device, specs) → ReviewMatchType
+    exactDevice:      brand + series + (CPU model OR CPU family OR phone storage GB)
+    sameModelFamily:  brand + series only, or brand + CPU model (no series)
+    differentVariant: CPU architecture conflict or Ryzen tier conflict
+    unrelated:        no brand match, or accessory/forum content
+
+  Phone exact-match rule:
+    When cpuModel=null and cpuFamily=null (A-series, MediaTek etc.):
+      storageGb in snippet (e.g. "512GB") → exactDevice
+
+  buildReviewDeviceQuery(device, specs) → query string (max 70 chars)
+    Uses: brand + model (without brand prefix) + CPU number (or family)
+    Example: "HP 15s 7520U", "Apple iPhone 14", "Samsung Galaxy A06"
+
+================================================================================
+PURPOSE FIT ENGINE
+================================================================================
+
+lib/logic/purposeFitEngine.ts
+
+evaluatePurposeFit(specs, purpose, category?) → PurposeFitResult
+  Signature: (DeviceSpecs | null, Purpose, DeviceCategory | undefined)
+
+  Smartphone detection:
+    isSmartphone(category, specs):
+      category === 'Smartphone'  → true
+      chip matches A-series Bionic/Pro → true
+      chip matches Snapdragon/Dimensity/MediaTek/Helio/Exynos → true
+      OS matches /^ios|^android/ → true
+
+  Phone chip tier (getPhoneChipTier):
+    flagship:  A15–A19 Bionic, Snapdragon 8 Gen 2/3, Dimensity 9xxx
+    high:      A13–A14, Snapdragon 8 Gen 1/888/8xx, SD 7 Gen, Dimensity 7xxx-8xxx,
+               MediaTek G90+, Exynos 2xxx
+    mid:       A12, SD 7xx/6xx, Dimensity 1xxx-6xxx, MediaTek G80-88, Helio P, Exynos 1xxx
+    entry:     SD 4xx/6xx, MediaTek G20-70, Helio A/G
+    unknown:   anything else
+
+  evaluateSmartphone(specs, purpose) covers all 14 Purpose values:
+    PersonalUse / PhotographyMobileContent → StrongFit (flagship/high) or GoodFit (mid)
+    Gaming          → GoodFit (flagship), GoodFit (high), UsableWithLimits (mid), NotIdeal (entry)
+    VideoEditing    → GoodFit (flagship/high), UsableWithLimits (mid)
+    ContentCreation → GoodFit (flagship/high), UsableWithLimits (mid)
+    School/OfficeAdmin/WorkBusiness → GoodFit (notes laptop better for extended work)
+    AccountingFinance → UsableWithLimits
+    GraphicDesign   → UsableWithLimits (Canva/Procreate, not desktop Photoshop)
+    ProgrammingCoding / EngineeringCAD / ThreeDDesignBlender / HeavyMultitasking
+                    → NotIdeal (desktop software not available on smartphones)
+
+  PC/Laptop tiers:
+    getRAMTier: <8GB→low, ≤15GB→mid, ≤31GB→high, 32GB+→pro
+    getCPUTier: celeron/pentium/i3/Ryzen3→weak, i5/Ryzen5/Ultra5→mid,
+                i7/Ryzen7/Ultra7/M1/M2/Tensor→strong, i9/Ryzen9/Ultra9/M3Pro/M3Max→pro
+    getStorageTier: nvme/ssd→ssd, emmc→emmc, hdd→hdd
+    getDisplayTier: oled/amoled/retina xdr/qhd+/4k/120hz oled→excellent,
+                    fhd+/1200p/120hz/ips 1080→good, fhd/1080p→basic
+
+  threshold for NotEnoughInformation: missing >= 5 spec fields
+  GPU NOT counted as missing when CPU implies integrated graphics
+
+================================================================================
+SPEC NORMALISATION DETAIL
+================================================================================
+
+normaliseSpecsFromSpecRows(rows) — handles all structured key/value sources:
+
+  Key normalisation: key.toLowerCase().replace(/[\s/\-_().]/g, '')
+  Handled keys (among others):
+    processor / cpu / processormodel         → specs.cpu (normalised casing)
+    processormodelnumber / cpumodelnumber    → IC composite CPU number
+    graphics / gpu / videoprocessor etc.     → specs.gpu (brand-only suppressed → infer from CPU)
+    ram / memory / ramcapacity etc.          → specs.ramGb + ramType
+    ramtype / memorytype                     → specs.ramType
+    ramspeed / memoryfrequency               → specs.ramSpeed
+    storage / internalstorage / ssdcapacity
+      / memorystoragecapacity / flashmemorysize → specs.storageGb + storageType
+    harddiskdescription / harddisktype       → specs.storageType only
+    storagetechnology / storagetype          → specs.storageType
+    display / screen                         → specs.display
+    resolution / screenresolution            → appended to display
+    displaytechnology / paneltype            → appended to display
+    operatingsystem / os                     → specs.operatingSystem (iOS + Android included)
+    battery / batterycapacity                → specs.battery (suspicious <1000mAh flagged)
+    weight / netweight / itemweight          → specs.weight
+    warranty / warrantyperiod                → specs.warranty
+    usbtypec / usbc                          → specs.ports
+    usb3 / usb30 / usb32                    → specs.ports
+    hdmi / hdmiout                           → specs.ports
+    wifi / builtinwifi                       → specs.connectivity
+    bluetooth                                → specs.connectivity
+    connectivitytechnology / wirelesstechnology → specs.connectivity (full value, comma list)
+    cellulartechnology                       → prepended to connectivity
+    camera / webcam / cameraresolution       → specs.camera
+    displaybrightness / brightness           → specs.brightness
+
+  IC composite CPU: "Processor: AMD Ryzen 5" + "Processor Model Number: 7520U"
+    → combined to "AMD Ryzen 5 7520U" at end of loop
+
+  CPU casing normalisation: amd→AMD, ryzen→Ryzen, intel→Intel, core→Core,
+    apple→Apple, mediatek→MediaTek, snapdragon→Snapdragon, exynos→Exynos, helio→Helio
+
+normaliseSpecsFromTitle(title):
+  RAM: "16GB RAM" / "16GB DDR5" / "8GB LPDDR5"
+  Storage: "512GB SSD" / "1TB NVMe" / "256GB HDD"
+  CPU: 22 patterns covering all PC + mobile chip families
+       includes bare family names (no AMD/Intel prefix) for URL slug compatibility
+  RAM fallback: bare "16GB" for known sizes (4/6/8/10/12/16/24/32/48/64) when
+    no strict match found and value doesn't conflict with already-found storage
+  Phone storage fallback: 128/256/512/1024 GB without SSD suffix
+  Display: size from "15.6-inch" / "6.7"" / "15.6 FHD" patterns
+  OS: Windows 10/11 (Home/Pro/S), macOS, iOS, Android; bare "Windows" captured
+
+slugToTitle() in GenericMetadataProvider:
+  "16 gb" / "512 tb" (space-separated) → "16GB" / "512TB"
+  "15 6" → "15.6" (decimal display size)
+  "ddr 4" → "DDR4", "lpddr 5" → "LPDDR5"
+  "win11pro" / "win11home" / "win-11-home" → "Windows 11 Pro" / "Windows 11 Home"
+  "m 2" → "M.2"
+  CPU numbers: "7520u" → "7520U"
+  Brands: hp→HP, dell→Dell, lenovo→Lenovo, asus→ASUS, samsung→Samsung,
+    xiaomi→Xiaomi, huawei→Huawei, oppo→OPPO, realme→Realme
+  Phone models: iphone→iPhone, ipad→iPad, galaxy→Galaxy, pixel→Pixel,
+    redmi→Redmi, poco→POCO
+
+================================================================================
+PARTS SEARCH QUERY BUILDER
+================================================================================
+
+lib/logic/partsSearchQueryBuilder.ts
+
+formatDeviceLabel(brand, model, deviceName): string
+  Prevents "HP HP Laptop" by checking if model/deviceName already starts with brand.
+  Returns e.g. "HP 15s-eq2xxx", "Dell XPS 15 9530"
+
+buildPartsQuerySet(componentType, device, specs, country): PartsQuerySet
+  Returns { primaryQuery, alternativeQueries[], warnings[], deviceLabel }
+  Spec-aware per component type:
+    Battery   → "HP 15s battery replacement buy South Africa"
+    Charger   → includes wattage from rawText regex, USB-C detection
+    RAM       → includes ramType (DDR4/DDR5) from specs
+    SSD       → includes storageType, doubled storageGb suggestion
+    Screen    → includes display size (inches) and FHD flag
+    All 26 ComponentType values handled with dedicated query patterns
+
+getComponentCompatibilityWarnings(componentType, hasExactModel): string[]
+  Per-component safety notes:
+    RAM       → "confirm DDR type, speed, whether RAM is soldered"
+    Battery   → "part numbers must match exactly — safety risk"
+    Charger   → "wattage and connector must match exactly"
+    Screen    → "exact part number or model match required"
+    SSD       → "confirm M.2 slot type (PCIe/SATA)"
+    CPU/GPU   → socket compatibility and PSU wattage warnings
+
+================================================================================
+SERP API PARTS PROVIDER — SHOPPING + ORGANIC FALLBACK
+================================================================================
+
+lib/providers/parts/SerpApiPartsProvider.ts
+
+Phase 1: serpApiShoppingSearch({ q: primaryQuery, gl, num: 20 })
+  → if results > 0: normalise to PartListing[], return with 'SerpApi Shopping' status
+
+Phase 2 (fallback when shopping returns 0 results):
+  serpApiSearch({ q: primaryQuery + " buy", gl, num: 10 })
+  → filter out forum/guide URLs (reddit, quora, youtube, wiki, etc.)
+  → normalise organic results:
+       confidence capped at 'medium' (organic = lower confidence cap)
+       price = null (no structured price data)
+       storeName = domain label (e.g. "Takealot", "takealot.com" → "Takealot")
+       sourceProvider = 'SerpApi Google Search'
+  → appends warning: "Results from Google organic search — no price data"
+
+Confidence scoring (both phases):
+  brand match + model match in title → 'high'
+  one match                          → 'medium'
+  neither                            → 'low'
+
+================================================================================
+RESULT MERGE ENGINE
+================================================================================
+
+lib/logic/resultMergeEngine.ts
+
+mergePartListings(allItems): PartListing[]
+  Deduplicates by normalised URL, then by (title-key + store name)
+  Keeps highest confidence entry per duplicate group
+
+rankPartListings(items): PartListing[]
+  Sort order: confidence (high→medium→low) → condition (New→Refurb→Used→Unknown)
+              → has price → lowest price
+
+mergeStoreListings(allItems): StoreListing[]
+  Same dedup logic
+
+rankStoreListings(items, preferredCountry?): StoreListing[]
+  Sort: exact/likely confidence first → preferred country match → has price → cheapest
+
+mergeProviderStatuses(allStatuses): ProviderStatus[]
+  Dedup by providerName — last write wins
+
+================================================================================
+PARTS PAGE FLOW
+================================================================================
+
+app/parts/page.tsx
+
+1. Reads URL params: componentType, category, brand, model, deviceName, country, city
+2. Reads sessionStorage key 'compatiq_parts_device' (set by UpgradeabilityGrid)
+3. Calls POST /api/parts/search with device context
+4. If all providerStatuses are 'not-configured':
+   → Shows amber card: "Open /setup-live-data, paste your SerpApi key..."
+   → Shows link button → /setup-live-data
+5. Shows manual search phrase (formatDeviceLabel + componentLabel)
+   with copy button as fallback when no live results
+6. Shows ProviderStatusPanel with all statuses
+
+Device label in header and search phrase:
+  formatDeviceLabel(brand, model, deviceName) → prevents "HP HP Laptop"
+
+================================================================================
+SERIAL NUMBER SECURITY
+================================================================================
+
+lib/security/maskSerial.ts
+  maskSerial(serial): string
+  → Shows prefix + last 4 chars, middle replaced with "****"
+  → Example: "SN12345678" → "SN/****5678"
+
+Serial number rules:
+  - Never passed in URL params or GET requests
+  - Always sent in POST body only
+  - Never stored in sessionStorage or localStorage
+  - Masked in all server-side logs and providerStatus messages
+  - hashSerial() creates SHA-256 hash for safe server-side comparison
+
+================================================================================
+BRAND SUPPORT URL SYSTEM
+================================================================================
+
+lib/data/brandSupportUrls.ts
+
+BrandSupportInfo { name, supportUrl, lookupType }
+
+BRAND_SUPPORT_MAP: Record<string, BrandSupportInfo>
+  Keys are lowercase brand aliases (e.g. 'surface' → Microsoft entry).
+  Multiple aliases can point to same info (surface/microsoft, mi/redmi/poco/xiaomi, etc.)
+
+getBrandSupport(brand): BrandSupportInfo | null
+  1. Exact lowercase key match
+  2. Partial match — typed brand contains a key OR key contains typed brand
+
+ALL_BRAND_SUPPORT: BrandSupportInfo[]
+  Flat list deduplicated by supportUrl, sorted alphabetically by display name.
+  Used to render the chip grid in SerialLookupForm error state.
+
+23 unique brands covered:
+  PC / Laptop:  HP, Dell, Lenovo, Apple, ASUS, Acer, MSI, Microsoft,
+                Razer, Gigabyte / AORUS, LG, TCL, Toshiba / Dynabook, Sony
+  Smartphones:  Samsung, Google, Huawei, Xiaomi, OnePlus, Oppo, Realme,
+                Motorola, Nokia
+
+Aliases in BRAND_SUPPORT_MAP (resolve to above):
+  surface → Microsoft, aorus → Gigabyte / AORUS, dynabook → Toshiba / Dynabook,
+  pixel → Google, mi / redmi / poco → Xiaomi, moto → Motorola
+
+UX flow:
+  Serial lookup fails → error state in SerialLookupForm
+  → chip grid of ALL_BRAND_SUPPORT rendered
+  → if user has typed a brand: matching chip highlighted emerald (getBrandSupport match)
+     with ExternalLink icon + contextual hint: "On the [Brand] page, enter your
+     [lookupType] to find your model. Then come back and enter it manually above."
+  → all other chips: white/slate, link to brand support page
+
+================================================================================
+SETUP SYSTEM (DEV ONLY)
+================================================================================
+
+/setup-live-data  ← app/setup-live-data/page.tsx
+  - Shows SerpApi configured: Yes / No
+  - Input field (type=password) for pasting key
+  - "Save key locally" → POST /api/debug/save-env-key
+  - Clears input from state immediately after save — key never held in React state
+  - Shows "Restart the dev server" instruction after save
+  - "Refresh status" button → re-fetches /api/debug/providers
+
+POST /api/debug/save-env-key
+  - 403 in production
+  - Reads .env.local, replaces SERPAPI_API_KEY= line, writes back
+  - Never logs the key value
+  - Never returns the key value
+
+GET /api/debug/providers
+  - 403 in production
+  - Returns 28 providers grouped by category
+  - Each entry: { name, category, configured, missingEnvVars[], envVarNote? }
+  - Includes summary, quickStart[], notConfiguredEnvVars[]
+
+================================================================================
+CONFLICT DETECTION ENGINE
+================================================================================
+
+lib/logic/conflictDetectionEngine.ts
+
+detectConflicts(specs, rawText): string[]
+  Checks:
+    Intel/AMD conflict  → title says Intel but rawText says AMD or vice versa
+    RAM mismatch        → specs.ramGb ≠ value extracted from rawText
+    Storage mismatch    → specs.storageGb ≠ value extracted from rawText
+    Suspicious battery  → laptop with mAh value > 99999 (likely phone spec on laptop page)
+
+Called by /api/device/advisory — results returned as conflictWarnings[]
+Rendered in buy-device/report/page.tsx as orange AlertTriangle warning cards
+
+================================================================================
+UPGRADEABILITY ENGINE
+================================================================================
+
+lib/logic/upgradeabilityEngine.ts
+
+assessUpgradeability(device, specs): UpgradeabilityResult[]
+  Returns an array of component upgrade assessments.
+  Each entry: { componentType, upgradeable, discrete, notes, difficulty, costEstimate }
+
+ComponentType union (lib/types/upgradeability.ts) — 26 values:
+  Battery, Charger, RAM, SSD, HDD, Screen, Keyboard, WifiCard, CoolingFan,
+  Speakers, ChargingPort, BackCover, CameraModule, GPU, PSU, CPU, CPUCooler,
+  CaseFans, BluetoothCard, Monitor, Motherboard, SIMTray, Case, ScreenProtector,
+  Cable, SIMTray
+
+COMPONENT_LABELS: Record<ComponentType, string>
+  Human-readable labels for each component type
+
+UpgradeabilityGrid (component):
+  Renders upgrade results as cards
+  "Find parts →" button: stores device context in sessionStorage('compatiq_parts_device')
+  then navigates to /parts?componentType=...&category=...&brand=...&model=...&deviceName=...
+
+================================================================================
+TYPE DEFINITIONS (CURRENT)
+================================================================================
+
+lib/types/device.ts
+  DeviceCategory = 'PC' | 'Laptop' | 'Smartphone'
+  Purpose        = 14-value union (PersonalUse → HeavyMultitasking)
+  DeviceIdentity { id?, brand, model, variant?, deviceName, category, confidence,
+                   sourceProvider?, sourceUrl?, productNumber? }
+  DeviceSpecs    { cpu, gpu, chipset, ram, ramGb, ramType, ramSpeed, storage,
+                   storageGb, storageType, display, brightness, battery, charging,
+                   camera, operatingSystem, ports, connectivity, weight, warranty,
+                   coolingNotes, repairabilityNotes, rawText }
+
+lib/types/product.ts
+  StoreListing   { id, productName, storeName, price, currency, availability,
+                   country, city, productUrl, imageUrl, matchConfidence,
+                   matchScore?, matchReasons?: string[], matchConflicts?: string[],
+                   sourceProvider, lastCheckedAt }
+  ProductLinkResult { success, sourceType, providerStatuses[], device, specs,
+                      storeListing, warnings[], lastCheckedAt }
+
+lib/types/reviews.ts
+  ReviewSignal   { category, sentiment, summary, praises[], complaints[],
+                   concernAreas[], sourceUrls[], confidence, providerName,
+                   matchCoverage?: 'exact'|'family'|'mixed', noExactSignals?: boolean }
+  ReviewSearchInput { device, specs?: DeviceSpecs | null }
+
+lib/types/parts.ts
+  PartListing    { id, productName, componentType, storeName, price, currency,
+                   availability, condition, country, city, productUrl, imageUrl,
+                   compatibilityConfidence, compatibilityReason, missingConfirmation,
+                   sellerQuestion, sourceProvider, lastCheckedAt }
+  PartsSearchInput { device, componentType, specs?, country?, city? }
+  PartsSearchResult { success, providerStatuses[], items[], warnings[], lastCheckedAt }
+
+lib/types/advisory.ts
+  SuitabilityRating = 'StrongFit'|'GoodFit'|'UsableWithLimits'|'NotIdeal'|'NotEnoughInformation'
+  PurposeFitResult  { purpose, rating, explanation, shouldWorkWellWith[], mayStruggleWith[],
+                      bottlenecks[], minimumRecommendedSpecs[], missingInformation[], confidence }
+  AdvisoryRequest   { device: DeviceIdentity, specs: DeviceSpecs | null, purpose: Purpose }
+
+lib/types/providers.ts
+  ProviderStatus { providerName, connected, status, message, lastCheckedAt }
+  status: 'connected' | 'not-configured' | 'failed' | 'rate-limited' | 'no-results'
+
+lib/types/upgradeability.ts
+  ComponentType  (26-value union)
+  UpgradeabilityResult { componentType, upgradeable, discrete?, notes, difficulty?, costEstimate? }
+  COMPONENT_LABELS: Record<ComponentType, string>
+
+================================================================================
+URL SCHEMA (CURRENT)
+================================================================================
+
+Route                Route
+------------------------------------------------------------
+/                    Homepage
+/buy-device          "Looking for a device" entry
+/buy-device/report   Full advisory + upgradeability report
+/have-device         "I have a device" entry
+/have-device/result  Device result page
+/parts               Live parts search (provider-backed)
+/how-it-works        Explanation page
+/privacy             Privacy policy (static)
+/terms               Terms of use (static)
+/disclaimer          Advisory disclaimer (static)
+/setup-live-data     API key setup (dev only — redirects to / in production)
+/advisory-report     Legacy redirect → /buy-device
+/looking-for-device  Legacy redirect → /buy-device
+/i-have-device       Legacy redirect → /have-device
+/parts-results       Legacy redirect → /parts
+
+API:
+  POST /api/device/advisory
+  POST /api/device/serial-lookup
+  POST /api/product/analyse-link
+  POST /api/parts/search
+  POST /api/store/search-device
+  POST /api/reviews/search
+  GET  /api/debug/providers         (dev only)
+  POST /api/debug/save-env-key      (dev only)
+
+================================================================================
+COLOUR SYSTEM
+================================================================================
+
+Background:      #050a14        (near-black — all pages)
+Card surfaces:   bg-white
+Dark cards:      bg-slate-900 / #0f172a
+
+Primary actions: sky-500        (#0ea5e9) — advisory/buy journey
+Parts journey:   emerald-500    (#10b981) — parts / have-device journey
+Setup/warnings:  amber-600      — setup page, compatibility warnings
+
+Compatibility confidence:
+  high    → emerald
+  medium  → sky / amber
+  low     → slate / orange
+  unknown → slate
+
+Provider status:
+  connected      → emerald
+  not-configured → slate
+  failed         → red
+  rate-limited   → orange
+  no-results     → amber
+
+Match confidence (store):
+  exact/likely   → shown in "Same device" section
+  similar        → shown in collapsible "Similar alternatives" section (amber)
+  unknown        → hidden entirely
+
+Review match coverage:
+  noExactSignals=true → amber banner "We couldn't find reviews for this exact model"
+  matchCoverage='mixed' → sky info bar noting mixed exact/similar-model coverage
+
+================================================================================
+CONFIGURATION FILES
+================================================================================
+
+.env.example
+  All 29 env var names with comments — no real values committed
+  Grouped: eBay, SerpApi, Best Buy, UPC/Barcode, Amazon, Manufacturer Serial,
+           SA Retailers, NVD, Database/Cache
+
+.env.local (gitignored)
+  SERPAPI_API_KEY=<set>     ← SerpApi key active
+  All other keys empty
+
+docs/API_SETUP.md
+  Full developer guide: provider groups, eBay OAuth steps,
+  minimum working setup, debug endpoint usage, security rules
+
+================================================================================
+RETAILER FETCH BEHAVIOUR (KNOWN)
+================================================================================
+
+Retailer            Fetch result     CompatIQ behaviour
+---------------------------------------------------------------------------
+Wootware            200 + full HTML  Full extraction — all specs available
+Computermania       200 + full HTML  Full extraction — all specs available
+Matrix Warehouse    200 + full HTML  Full extraction — all specs available
+Evetech             200 + full HTML  Full extraction — all specs available
+GeeWiz              403 blocked      URL slug fallback — specs from URL slug
+Incredible          403 blocked      URL slug fallback — specs from URL slug
+HiFi Corp           403 blocked      URL slug fallback — specs from URL slug
+OneDayOnly          200 + full HTML  Full extraction — JSON-LD + page text
+Samsung.com         200 + full HTML  Full extraction — JSON-LD product schema
+Bash.com            200 + partial    Partial extraction — may miss CPU/OS
+Cellucity           200 + partial    Partial extraction — basic details only
+Amazon SA           503 blocked      URL slug fallback — slug often omits CPU/RAM
+                                     → Amazon-specific warning + spec paste prompt
+Makro               200 + CAPTCHA    isProductTitle() detects, slug fallback used
+Game                200 + CAPTCHA    isProductTitle() detects; ID-only slug → fail
+Takealot            200 + empty SPA  isEmptySpa() detects, slug fallback used
+Vodacom             200 + empty SPA  ID-only slug → fail, manual entry required
+
+================================================================================
+SUMMARY COUNTS
+================================================================================
+
+Item                                 Count
+---------------------------------------------------------------------------
+App routes (pages)                   15 (11 live + 4 legacy redirects)
+API routes                           9  (6 production + 3 dev-only)
+React components                     ~32
+TypeScript type files                8
+Provider interfaces                  3
+Live providers (functional)          3  (eBay, SerpApi, NVD)
+Stub providers (not-configured)      25
+Serial lookup providers              8  (4 functional stubs, 4 pure stubs)
+SA retailer stubs                    8
+Barcode provider stubs               4
+Devices in database                  48
+Supported ComponentTypes             26
+Supported Purposes                   14
+Supported DeviceCategories           3  (PC, Laptop, Smartphone)
+Phone chip tier levels               5  (flagship/high/mid/entry/unknown)
+Brand support entries (unique)       23 (14 PC/laptop + 9 smartphones)
+Store score components               10 (brand, model, CPU num, CPU family,
+                                        RAM, storage, SSD bonus, variant,
+                                        brand conflict, CPU conflict)
+Review match types                   4  (exactDevice, sameModelFamily,
+                                        differentVariant, unrelated)
+Parts search query patterns          26 (one per ComponentType)
+HTML extraction layers               9  (+ slug fallback = 10 total)
+Retailer fetch behaviour (tested)    16 (3 PASS full, 6 PARTIAL/slug,
+                                        2 CAPTCHA, 2 SPA, 1 blocked,
+                                        2 ID-only fail)
+Conflict detection checks            4
+Spec normaliser CPU patterns         22
